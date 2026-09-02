@@ -34,6 +34,9 @@ import torch.nn as nn
 from torch.utils.data import DataLoader, TensorDataset
 
 from amfta.aggregation.amfta import AMFTAAggregator
+from amfta.aggregation.amfta_s import (
+    AMFTASAggregator, ResourceProfile, compute_scores, schedule,
+)
 from amfta.aggregation.baselines import (
     FedAvgAggregator,
     FedDBCAggregator,
@@ -113,6 +116,10 @@ class RunConfig:
 
     # Model
     repartition: bool = False  # regenerate the split at alpha_dirichlet
+    p_min: float = 0.25          # participation floor for AMFTA-S
+    sched_gamma: float = 1.0     # participation exponent
+    spoof_fraction: float = 0.0  # share of Byzantine clients understating cost
+    spoof_factor: float = 0.05   # how far they understate it
     model_class: str = "mlp"   # 'logistic' reproduces the manuscript
     model_input_dim: int = 41
     model_hidden1: int = 64
@@ -216,6 +223,34 @@ class FederatedRunner:
 
         # Load data
         self._load_data()
+
+        # Resource-aware schedule (AMFTA-S only). The sustainability layer
+        # sees client resource reports and nothing else; it never sees trust.
+        import numpy as _np
+        self._rng = _np.random.default_rng(config.seed + 9973)
+        self._sampled_this_round = []
+        self.participation = {}
+        self.local_epochs_per_client = {}
+        if config.method == "amfta_s":
+            n_samples = {cid: len(y) for cid, (_, y) in self.client_tensors.items()}
+            self.resource_profile = ResourceProfile(config.num_clients, seed=config.seed)
+            misreport = None
+            if config.spoof_fraction > 0:
+                byz = sorted(assign_byzantine_clients(
+                    config.num_clients, config.byzantine_fraction, config.seed))
+                k = int(round(config.spoof_fraction * len(byz)))
+                misreport = {c: config.spoof_factor for c in byz[:k]}
+            scores = compute_scores(
+                n_samples, self.resource_profile,
+                d=self.global_model.num_parameters(),
+                epochs=config.local_epochs, batch=config.local_batch_size,
+                misreport=misreport)
+            self.participation, self.local_epochs_per_client = schedule(
+                scores, p_min=config.p_min, gamma=config.sched_gamma,
+                base_epochs=config.local_epochs)
+            logger.info("AMFTA-S schedule: mean p=%.3f, mean local epochs=%.2f",
+                        sum(self.participation.values()) / len(self.participation),
+                        sum(self.local_epochs_per_client.values()) / len(self.local_epochs_per_client))
 
         # Assign Byzantine clients
         self.byzantine_ids: Set[int] = assign_byzantine_clients(
@@ -328,6 +363,10 @@ class FederatedRunner:
         cfg = self.cfg
         method = cfg.method.lower()
 
+        if method == "amfta_s":
+            return AMFTASAggregator(num_clients=cfg.num_clients,
+                                    beta=cfg.beta, p_min=cfg.p_min)
+
         if method in ("amfta", "amfta_noq"):
             # Handle ablation variants. 'amfta_noq' is the no-trusted-data
             # ablation: Factor III (server validation buffer) is disabled, so
@@ -415,26 +454,46 @@ class FederatedRunner:
                 # ── Phase A: Client local training ─────────────────────────
                 updates: UpdateDict = {}
 
-                for cid in range(cfg.num_clients):
+                # Under AMFTA-S the sustainability layer decides who is asked
+                # to work this round and how much work each does. Every other
+                # method trains the full cohort for a fixed number of epochs.
+                if self.participation:
+                    invited = [c for c in range(cfg.num_clients)
+                               if self._rng.random() < self.participation.get(c, 1.0)]
+                    if not invited:                      # never skip a whole round
+                        invited = [max(self.participation,
+                                       key=self.participation.get)]
+                    self._sampled_this_round = invited
+                else:
+                    self._sampled_this_round = list(range(cfg.num_clients))
+
+                for cid in self._sampled_this_round:
                     X_c, y_c = self.client_tensors[cid]
+                    epochs = self.local_epochs_per_client.get(cid, cfg.local_epochs)
 
                     if cid in self.byzantine_ids:
                         update = self.attack.get_update(
                             self.global_model, (X_c, y_c),
-                            epochs=cfg.local_epochs,
+                            epochs=epochs,
                             lr=cfg.local_lr,
                             batch_size=cfg.local_batch_size,
                         )
                     else:
                         update = local_train(
                             self.global_model, X_c, y_c,
-                            epochs=cfg.local_epochs,
+                            epochs=epochs,
                             lr=cfg.local_lr,
                             batch_size=cfg.local_batch_size,
                             device=self.device,
                         )
 
                     updates[cid] = update
+
+                if self.participation:
+                    # the aggregator needs the assigned probabilities, not the
+                    # realised draw, to weight by 1/p_i
+                    self.aggregator.participation = {
+                        c: self.participation[c] for c in self._sampled_this_round}
 
                 # ── Phase A2: coalition-level attacks ──────────────────────
                 # The adaptive attack is defined over the whole coalition: it
