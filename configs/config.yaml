@@ -1,0 +1,107 @@
+# =============================================================================
+# AMFTA — Default Experiment Configuration
+# =============================================================================
+# Override any field via CLI arguments or environment variables.
+# All paths are relative to the repository root.
+
+experiment:
+  name: "amfta_default"
+  seed: 42
+  description: "AMFTA vs baselines on TON_IoT with 30% label-flipping Byzantine clients"
+
+# ---------------------------------------------------------------------------
+# Federated Learning
+# ---------------------------------------------------------------------------
+federated:
+  num_clients: 100
+  num_rounds: 100
+  local_epochs: 5
+  local_lr: 0.01
+  local_batch_size: 64
+  global_lr: 1.0              # η_global — scales aggregated update (paper: 1.0)
+
+# ---------------------------------------------------------------------------
+# Byzantine Configuration
+# ---------------------------------------------------------------------------
+byzantine:
+  fraction: 0.30              # 10%, 20%, 30%, 40% for sweep
+  attack_type: "label_flipping"   # "label_flipping" | "gaussian_noise" | "none"
+  label_flip_fraction: 1.0    # for label_flipping attack only
+  gaussian_sigma: 1.0         # for gaussian_noise attack only
+
+# ---------------------------------------------------------------------------
+# AMFTA Aggregator
+# ---------------------------------------------------------------------------
+amfta:
+  alpha_s: 0.4                # Weight: gradient similarity  (Factor I)
+  alpha_h: 0.3                # Weight: historical reputation (Factor II)
+  alpha_q: 0.3                # Weight: contribution quality  (Factor III)
+  beta: 0.9                   # EMA decay for reputation tracker
+  tau_lower: 0.35             # Lower borderline threshold
+  tau_upper: 0.55             # Upper borderline threshold
+
+# ---------------------------------------------------------------------------
+# Baseline-Specific Configuration
+# ---------------------------------------------------------------------------
+baselines:
+  krum:
+    multi_krum: false
+  trimmed_mean:
+    trim_fraction: 0.10       # Must be >= byzantine_fraction for full protection
+  fltrust:
+    root_dataset_size: 200
+
+# ---------------------------------------------------------------------------
+# Model Architecture
+# ---------------------------------------------------------------------------
+model:
+  input_dim: 45               # TON_IoT network flow features
+  hidden1: 64
+  hidden2: 32
+  dropout: 0.0
+
+# ---------------------------------------------------------------------------
+# Data
+# ---------------------------------------------------------------------------
+data:
+  raw_dir: "data/raw"
+  processed_dir: "data/processed"
+  partition_dir: "data/partitions"
+  server_dir: "data/server"
+  alpha_dirichlet: 0.5        # Dirichlet concentration (non-IID degree)
+  val_buffer_size: 500        # Server-side quality evaluation buffer
+  test_fraction: 0.20
+  val_fraction: 0.10
+  deduplicate: true
+  use_synthetic: false        # Set true to run without TON_IoT download
+
+# ---------------------------------------------------------------------------
+# Training Seeds (5-fold multi-seed)
+# ---------------------------------------------------------------------------
+seeds: [42, 123, 456, 789, 1024]
+
+# ---------------------------------------------------------------------------
+# Logging & Output
+# ---------------------------------------------------------------------------
+output:
+  results_dir: "results"
+  figures_dir: "figures"
+  checkpoint_dir: "checkpoints"
+  log_level: "INFO"
+  log_interval: 10            # Print metrics every N rounds
+  save_checkpoints: false
+  save_figures: true
+
+# ---------------------------------------------------------------------------
+# Infrastructure
+# ---------------------------------------------------------------------------
+compute:
+  device: "auto"              # "auto" | "cpu" | "cuda"
+  num_workers: 0              # DataLoader workers (0 = main process)
+
+# ---------------------------------------------------------------------------
+# Reproducibility
+# ---------------------------------------------------------------------------
+reproducibility:
+  deterministic: true
+  cudnn_benchmark: false

@@ -1,0 +1,143 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.backends.legacy:build"
+
+[project]
+name = "amfta-fl"
+version = "1.0.0"
+description = "Adaptive Multi-Factor Trust Aggregation for Byzantine-Resilient Federated Learning in Non-IID Smart City IoT Networks"
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.9"
+
+keywords = [
+    "federated learning",
+    "Byzantine resilience",
+    "IoT security",
+    "intrusion detection",
+    "trust aggregation",
+    "non-IID",
+]
+
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Security",
+]
+
+dependencies = [
+    "torch>=2.1.0",
+    "numpy>=1.24.0",
+    "scikit-learn>=1.3.0",
+    "scipy>=1.11.0",
+    "pandas>=2.0.0",
+    "PyYAML>=6.0",
+    "matplotlib>=3.7.0",
+    "fastapi>=0.104.0",
+    "uvicorn[standard]>=0.24.0",
+    "pydantic>=2.0.0",
+    "tqdm>=4.66.0",
+    "rich>=13.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4.0",
+    "pytest-cov>=4.1.0",
+    "pytest-timeout>=2.2.0",
+    "black>=23.0.0",
+    "isort>=5.12.0",
+    "flake8>=6.0.0",
+    "mypy>=1.5.0",
+    "httpx>=0.25.0",
+]
+tracking = [
+    "mlflow>=2.8.0",
+    "wandb>=0.16.0",
+]
+
+[project.scripts]
+amfta-train  = "experiments.run_main:main"
+amfta-ablate = "experiments.run_ablation:main"
+amfta-serve  = "api.main:app"
+
+[project.urls]
+Homepage   = "https://github.com/amfta-research/amfta-fl"
+Repository = "https://github.com/amfta-research/amfta-fl"
+Issues     = "https://github.com/amfta-research/amfta-fl/issues"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["amfta*", "training*", "evaluation*", "experiments*", "api*", "configs*"]
+
+# ---------------------------------------------------------------------------
+# Black formatter
+# ---------------------------------------------------------------------------
+[tool.black]
+line-length = 95
+target-version = ["py39", "py310", "py311"]
+extend-exclude = '''
+/(
+  | \.git
+  | \.venv
+  | data
+  | results
+  | figures
+)/
+'''
+
+# ---------------------------------------------------------------------------
+# isort
+# ---------------------------------------------------------------------------
+[tool.isort]
+profile = "black"
+line_length = 95
+known_first_party = ["amfta", "training", "evaluation", "experiments", "api", "configs"]
+
+# ---------------------------------------------------------------------------
+# pytest
+# ---------------------------------------------------------------------------
+[tool.pytest.ini_options]
+testpaths    = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "-v --tb=short --strict-markers"
+markers = [
+    "slow: marks tests as slow (deselect with '-m not slow')",
+    "integration: marks integration tests",
+    "smoke: marks smoke tests",
+]
+timeout = 120
+
+# ---------------------------------------------------------------------------
+# Coverage
+# ---------------------------------------------------------------------------
+[tool.coverage.run]
+source = ["amfta", "training", "evaluation", "experiments", "api"]
+omit   = ["tests/*", "*/conftest.py", "setup.py"]
+
+[tool.coverage.report]
+show_missing = true
+fail_under   = 70
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if __name__ == .__main__.:",
+    "raise NotImplementedError",
+]
+
+# ---------------------------------------------------------------------------
+# mypy
+# ---------------------------------------------------------------------------
+[tool.mypy]
+python_version        = "3.9"
+warn_return_any       = true
+warn_unused_configs   = true
+ignore_missing_imports = true
+exclude = ["data/", "results/", "figures/"]

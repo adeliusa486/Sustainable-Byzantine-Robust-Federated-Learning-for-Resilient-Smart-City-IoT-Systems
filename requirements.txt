@@ -1,0 +1,48 @@
+# =============================================================================
+# AMFTA — Python Dependencies
+# =============================================================================
+# Install: pip install -r requirements.txt
+# GPU:     pip install torch torchvision --index-url https://download.pytorch.org/whl/cu121
+
+# ── Core ML Framework ────────────────────────────────────────────────────────
+torch>=2.1.0,<3.0.0
+numpy>=1.24.0,<2.0.0
+scikit-learn>=1.3.0,<2.0.0
+scipy>=1.11.0,<2.0.0
+
+# ── Data Processing ──────────────────────────────────────────────────────────
+pandas>=2.0.0,<3.0.0
+
+# ── Configuration ────────────────────────────────────────────────────────────
+PyYAML>=6.0
+omegaconf>=2.3.0,<3.0.0    # optional — falls back to DotDict if absent
+
+# ── API / Serving ────────────────────────────────────────────────────────────
+fastapi>=0.104.0,<1.0.0
+uvicorn[standard]>=0.24.0,<1.0.0
+pydantic>=2.0.0,<3.0.0
+httpx>=0.25.0               # for API integration tests
+
+# ── Visualisation ────────────────────────────────────────────────────────────
+matplotlib>=3.7.0,<4.0.0
+seaborn>=0.12.0,<1.0.0
+
+# ── Experiment Tracking (optional) ───────────────────────────────────────────
+# mlflow>=2.8.0              # Uncomment to enable MLflow tracking
+# wandb>=0.16.0              # Uncomment to enable Weights & Biases tracking
+
+# ── Testing ──────────────────────────────────────────────────────────────────
+pytest>=7.4.0,<9.0.0
+pytest-cov>=4.1.0
+pytest-timeout>=2.2.0
+
+# ── Code Quality ─────────────────────────────────────────────────────────────
+black>=23.0.0
+isort>=5.12.0
+flake8>=6.0.0
+mypy>=1.5.0
+
+# ── Utilities ────────────────────────────────────────────────────────────────
+tqdm>=4.66.0
+click>=8.1.0
+rich>=13.0.0                 # Pretty terminal output
