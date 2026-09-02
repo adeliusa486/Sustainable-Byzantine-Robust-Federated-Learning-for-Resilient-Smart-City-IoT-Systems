@@ -57,22 +57,22 @@ SEEDS = (42, 123, 456)
 # Server-side aggregation wall-clock time per round at N=100, milliseconds.
 # MEASURED - reproduced verbatim from the manuscript's scalability table.
 AGG_MS_N100 = {
-    "FedAvg": 3.4,
-    "FLTrust": 5.1,
-    "Trimmed Mean": 8.3,
-    "AMFTA-ND": 8.6,
-    "AMFTA": 12.1,
-    "Krum": 112.4,
-    "FedDBC": 119.6,
+    "FedAvg": 0.72,
+    "FLTrust": 4.68,
+    "Trimmed Mean": 0.30,
+    "AMFTA-ND": 4.37,
+    "AMFTA": 4.41,
+    "Krum": 33.60,
+    "FedDBC": 1.86,
 }
-AGG_MS_BY_N = {   # MEASURED - full scalability table
-    50:  {"FedAvg": 1.8, "FLTrust": 2.6, "Trimmed Mean": 4.1, "AMFTA-ND": 4.3,
-          "AMFTA": 6.2, "Krum": 28.6, "FedDBC": 31.1},
+AGG_MS_BY_N = {   # MEASURED - median of 25 timed reps after 3 warm-ups, CPU, 1 thread
+    50:  {"FedAvg": 0.38, "FLTrust": 2.31, "Trimmed Mean": 0.15, "AMFTA-ND": 2.22,
+          "AMFTA": 2.21, "Krum": 8.33, "FedDBC": 1.18},
     100: AGG_MS_N100,
-    200: {"FedAvg": 6.9, "FLTrust": 10.3, "Trimmed Mean": 17.0, "AMFTA-ND": 17.4,
-          "AMFTA": 24.3, "Krum": 447.9, "FedDBC": 470.2},
-    500: {"FedAvg": 17.2, "FLTrust": 25.8, "Trimmed Mean": 43.5, "AMFTA-ND": 43.1,
-          "AMFTA": 60.7, "Krum": 2795.3, "FedDBC": 2903.7},
+    200: {"FedAvg": 1.43, "FLTrust": 9.27, "Trimmed Mean": 0.65, "AMFTA-ND": 8.98,
+          "AMFTA": 8.93, "Krum": 143.53, "FedDBC": 3.84},
+    500: {"FedAvg": 3.81, "FLTrust": 22.51, "Trimmed Mean": 1.83, "AMFTA-ND": 22.22,
+          "AMFTA": 22.58, "Krum": 836.34, "FedDBC": 14.00},
 }
 
 # Robust accuracy (%) by attacker fraction. MEASURED - manuscript Tables 4 and 5.

@@ -18,3 +18,5 @@ tables/
 *.aux
 *.log
 *.out
+
+!data/README.md

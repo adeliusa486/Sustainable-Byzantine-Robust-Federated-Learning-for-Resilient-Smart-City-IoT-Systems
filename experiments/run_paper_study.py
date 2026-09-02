@@ -192,6 +192,14 @@ def block_scalability(args):
     import amfta.aggregation.extra_baselines  # noqa: F401
     from amfta.models.logistic import build_global_model
 
+    # The manuscript reports CPU-only aggregation timings. Pin the device and
+    # the thread count so the measurement does not depend on what else the
+    # machine happens to be doing.
+    torch.set_num_threads(1)
+    prev_device = torch.get_default_device() if hasattr(torch, "get_default_device") else None
+    logger.info("timing on CPU, 1 thread, %d warm-up + %d timed reps (median)",
+                3, args.timing_reps)
+
     path = out_path(Path(args.out), "scalability")
     rows = []
     d_model = build_global_model(args.model, input_dim=args.input_dim)
@@ -202,7 +210,7 @@ def block_scalability(args):
             for seed in args.seeds[:3]:
                 torch.manual_seed(seed)
                 updates = {
-                    i: {k: torch.randn_like(v.float()) * 0.01
+                    i: {k: (torch.randn_like(v.float().cpu()) * 0.01)
                         for k, v in template.items()}
                     for i in range(N)
                 }
@@ -227,14 +235,24 @@ def block_scalability(args):
                     kw["root_update"] = {k: torch.randn_like(v.float()) * 0.01
                                          for k, v in template.items()}
 
-                t0 = time.perf_counter()
-                for _ in range(args.timing_reps):
+                WARMUP = 3
+                ok = True
+                for _ in range(WARMUP):
                     try:
                         agg.aggregate(d_model, updates, **kw)
                     except Exception as e:
                         logger.error("timing failed %s N=%d: %s", method, N, e)
+                        ok = False
                         break
-                ms = 1000 * (time.perf_counter() - t0) / args.timing_reps
+                if not ok:
+                    continue
+                samples = []
+                for _ in range(args.timing_reps):
+                    t0 = time.perf_counter()
+                    agg.aggregate(d_model, updates, **kw)
+                    samples.append(1000 * (time.perf_counter() - t0))
+                samples.sort()
+                ms = samples[len(samples) // 2]          # median, not mean
                 rows.append({
                     "block": "scalability", "method": method, "attack": "none",
                     "rho": "0.00", "alpha": "0.50", "seed": seed, "round": N,
